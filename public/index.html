@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Inventario Electrónica | CRUD Node.js + MySQL</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg:       #0d0f14;
+    --surface:  #161921;
+    --border:   #242834;
+    --accent:   #00e5a0;
+    --accent2:  #0099ff;
+    --danger:   #ff4757;
+    --warn:     #ffa502;
+    --text:     #e8eaf0;
+    --muted:    #6b7280;
+    --radius:   10px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse at 20% 10%, rgba(0,229,160,.06) 0%, transparent 55%),
+      radial-gradient(ellipse at 80% 80%, rgba(0,153,255,.05) 0%, transparent 55%);
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 36px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(22,25,33,.8);
+    backdrop-filter: blur(10px);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon {
+    width: 38px; height: 38px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 8px;
+    display: grid; place-items: center;
+    font-size: 18px;
+  }
+  .logo-text { font-family: 'Space Mono', monospace; font-size: 14px; }
+  .logo-text span { color: var(--accent); }
+  .header-stats { display: flex; gap: 24px; }
+  .stat { text-align: right; }
+  .stat-val { font-family: 'Space Mono', monospace; font-size: 20px; font-weight: 700; color: var(--accent); }
+  .stat-lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+
+  /* ── Main layout ── */
+  main { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+
+  /* ── Section title ── */
+  .section-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px; letter-spacing: .12em;
+    color: var(--muted); text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .section-title span { color: var(--accent); }
+
+  /* ── Form card ── */
+  .form-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    margin-bottom: 32px;
+    position: relative; overflow: hidden;
+  }
+  .form-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+  }
+  .form-title {
+    font-size: 18px; font-weight: 600; margin-bottom: 24px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px; padding: 3px 8px;
+    border-radius: 4px; font-weight: 400;
+  }
+  .badge-create { background: rgba(0,229,160,.15); color: var(--accent); }
+  .badge-edit   { background: rgba(0,153,255,.15); color: var(--accent2); }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1.5fr; gap: 16px; align-items: end; }
+  .form-group { display: flex; flex-direction: column; gap: 8px; }
+  label { font-size: 12px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: .05em; }
+  input[type="text"], input[type="number"], input[type="file"] {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 10px 14px;
+    font-size: 14px;
+    font-family: 'DM Sans', sans-serif;
+    transition: border-color .2s;
+    width: 100%;
+  }
+  input:focus { outline: none; border-color: var(--accent); }
+  input[type="file"] { padding: 8px 14px; cursor: pointer; }
+
+  .btn {
+    padding: 10px 22px; border: none; border-radius: 6px;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    transition: opacity .2s, transform .1s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .btn:hover { opacity: .85; }
+  .btn:active { transform: scale(.97); }
+  .btn-primary { background: var(--accent); color: #000; }
+  .btn-secondary { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-edit   { background: rgba(0,153,255,.15); color: var(--accent2); border: 1px solid rgba(0,153,255,.3); padding: 6px 14px; font-size: 12px; }
+  .btn-delete { background: rgba(255,71,87,.12); color: var(--danger);  border: 1px solid rgba(255,71,87,.3);  padding: 6px 14px; font-size: 12px; }
+  .btn-update { background: var(--accent2); color: #fff; }
+  .btn-cancel { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .form-actions { display: flex; gap: 10px; }
+
+  /* ── Table ── */
+  .table-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .table-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .table-header h2 { font-size: 16px; font-weight: 600; }
+  .search-box {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .search-box input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text);
+    padding: 8px 14px; font-size: 13px;
+    width: 220px;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px; letter-spacing: .1em;
+    color: var(--muted); text-transform: uppercase;
+    text-align: left; padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  tbody tr {
+    border-bottom: 1px solid rgba(36,40,52,.6);
+    transition: background .15s;
+  }
+  tbody tr:hover { background: rgba(255,255,255,.02); }
+  tbody tr:last-child { border-bottom: none; }
+  td { padding: 14px 20px; font-size: 14px; vertical-align: middle; }
+  .td-id { font-family: 'Space Mono', monospace; font-size: 12px; color: var(--muted); }
+  .td-name { font-weight: 500; }
+  .td-price { font-family: 'Space Mono', monospace; color: var(--accent); font-size: 13px; }
+  .stock-badge {
+    display: inline-block; padding: 3px 10px; border-radius: 20px;
+    font-size: 12px; font-weight: 600; font-family: 'Space Mono', monospace;
+  }
+  .stock-ok   { background: rgba(0,229,160,.12); color: var(--accent); }
+  .stock-low  { background: rgba(255,165,2,.12);  color: var(--warn); }
+  .stock-zero { background: rgba(255,71,87,.12);  color: var(--danger); }
+  .td-img img {
+    width: 44px; height: 44px; object-fit: cover;
+    border-radius: 6px; border: 1px solid var(--border);
+  }
+  .td-img .no-img {
+    width: 44px; height: 44px; border-radius: 6px;
+    background: var(--bg); border: 1px dashed var(--border);
+    display: grid; place-items: center; font-size: 18px;
+  }
+  .actions { display: flex; gap: 8px; }
+  .empty {
+    text-align: center; padding: 60px 20px;
+    color: var(--muted); font-size: 14px;
+  }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed; bottom: 30px; right: 30px;
+    padding: 14px 22px; border-radius: 8px;
+    font-size: 14px; font-weight: 500;
+    display: none; z-index: 999;
+    animation: slideUp .3s ease;
+    max-width: 320px;
+  }
+  #toast.show { display: block; }
+  #toast.success { background: var(--accent); color: #000; }
+  #toast.error   { background: var(--danger); color: #fff; }
+  @keyframes slideUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+  /* ── Loading ── */
+  .loading { text-align: center; padding: 40px; color: var(--muted); }
+
+  @media (max-width: 768px) {
+    .form-grid { grid-template-columns: 1fr 1fr; }
+    .header-stats { display: none; }
+    main { padding: 20px 14px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    <div class="logo-text">ELECTRO<span>STOCK</span></div>
+  </div>
+  <div class="header-stats">
+    <div class="stat">
+      <div class="stat-val" id="total-productos">—</div>
+      <div class="stat-lbl">Productos</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" id="total-stock">—</div>
+      <div class="stat-lbl">Unidades</div>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ── Formulario CREAR ── -->
+  <div id="form-crear" class="form-card">
+    <div class="form-title">
+      Nuevo Producto <span class="badge badge-create">CREATE</span>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Nombre del Producto</label>
+        <input type="text" id="c-nombre" placeholder="Ej: Laptop Dell XPS" />
+      </div>
+      <div class="form-group">
+        <label>Precio (S/.)</label>
+        <input type="number" id="c-precio" placeholder="0.00" step="0.01" min="0" />
+      </div>
+      <div class="form-group">
+        <label>Stock Disponible</label>
+        <input type="number" id="c-stock" placeholder="0" min="0" />
+      </div>
+      <div class="form-group">
+        <label>Imagen del Producto</label>
+        <div class="form-actions">
+          <input type="file" id="c-imagen" accept="image/*" />
+          <button class="btn btn-primary" onclick="crearProducto()">＋ Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Formulario EDITAR ── -->
+  <div id="form-editar" class="form-card" style="display:none; border-color: rgba(0,153,255,.3);">
+    <div class="form-title">
+      Editar Producto <span class="badge badge-edit">UPDATE</span>
+    </div>
+    <input type="hidden" id="e-id" />
+    <input type="hidden" id="e-imagen-actual" />
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Nombre del Producto</label>
+        <input type="text" id="e-nombre" />
+      </div>
+      <div class="form-group">
+        <label>Precio (S/.)</label>
+        <input type="number" id="e-precio" step="0.01" min="0" />
+      </div>
+      <div class="form-group">
+        <label>Stock Disponible</label>
+        <input type="number" id="e-stock" min="0" />
+      </div>
+      <div class="form-group">
+        <label>Nueva Imagen (opcional)</label>
+        <div class="form-actions">
+          <input type="file" id="e-imagen" accept="image/*" />
+          <button class="btn btn-update" onclick="actualizarProducto()">✓ Actualizar</button>
+          <button class="btn btn-cancel" onclick="cancelarEdicion()">✕</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tabla de productos ── -->
+  <div class="table-card">
+    <div class="table-header">
+      <h2>📦 Inventario de Productos</h2>
+      <div class="search-box">
+        <input type="text" id="buscar" placeholder="🔍 Buscar producto..." oninput="filtrar()" />
+        <button class="btn btn-secondary" onclick="cargarProductos()">↺ Recargar</button>
+      </div>
+    </div>
+    <div id="tabla-container">
+      <div class="loading">Cargando inventario…</div>
+    </div>
+  </div>
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+  const API = '/api/productos';
+  let productos = [];
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function toast(msg, type = 'success') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `show ${type}`;
+    setTimeout(() => t.className = '', 3000);
+  }
+
+  function stockClass(s) {
+    if (s === 0)  return 'stock-zero';
+    if (s <= 5)   return 'stock-low';
+    return 'stock-ok';
+  }
+
+  function updateStats() {
+    document.getElementById('total-productos').textContent = productos.length;
+    document.getElementById('total-stock').textContent =
+      productos.reduce((s, p) => s + p.stock, 0).toLocaleString();
+  }
+
+  // ── READ ───────────────────────────────────────────────────────────────────
+  async function cargarProductos() {
+    document.getElementById('tabla-container').innerHTML = '<div class="loading">Cargando…</div>';
+    try {
+      const r = await fetch(API);
+      productos = await r.json();
+      renderTabla(productos);
+      updateStats();
+    } catch {
+      toast('Error al cargar productos', 'error');
+    }
+  }
+
+  function renderTabla(data) {
+    if (!data.length) {
+      document.getElementById('tabla-container').innerHTML =
+        '<div class="empty"><div class="empty-icon">📭</div>No hay productos en el inventario</div>';
+      return;
+    }
+    document.getElementById('tabla-container').innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th><th>Imagen</th><th>Nombre</th>
+            <th>Precio</th><th>Stock</th><th>Fecha Alta</th><th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data.map(p => `
+            <tr>
+              <td class="td-id">#${p.id}</td>
+              <td class="td-img">
+                ${p.imagen
+                  ? `<img src="/uploads/${p.imagen}" alt="${p.nombre}" />`
+                  : `<div class="no-img">📷</div>`}
+              </td>
+              <td class="td-name">${p.nombre}</td>
+              <td class="td-price">S/ ${parseFloat(p.precio).toFixed(2)}</td>
+              <td>
+                <span class="stock-badge ${stockClass(p.stock)}">${p.stock} uds.</span>
+              </td>
+              <td style="font-size:12px;color:var(--muted)">
+                ${new Date(p.created_at).toLocaleDateString('es-PE')}
+              </td>
+              <td>
+                <div class="actions">
+                  <button class="btn btn-edit"   onclick='editarProducto(${JSON.stringify(p)})'>✏ Editar</button>
+                  <button class="btn btn-delete" onclick="eliminarProducto(${p.id},'${p.nombre}')">🗑 Eliminar</button>
+                </div>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>`;
+  }
+
+  function filtrar() {
+    const q = document.getElementById('buscar').value.toLowerCase();
+    renderTabla(productos.filter(p => p.nombre.toLowerCase().includes(q)));
+  }
+
+  // ── CREATE ─────────────────────────────────────────────────────────────────
+  async function crearProducto() {
+    const nombre = document.getElementById('c-nombre').value.trim();
+    const precio = document.getElementById('c-precio').value;
+    const stock  = document.getElementById('c-stock').value;
+    if (!nombre || !precio || stock === '') return toast('Completa todos los campos', 'error');
+
+    const fd = new FormData();
+    fd.append('nombre', nombre);
+    fd.append('precio', precio);
+    fd.append('stock',  stock);
+    const img = document.getElementById('c-imagen').files[0];
+    if (img) fd.append('imagen', img);
+
+    try {
+      const r = await fetch(API, { method: 'POST', body: fd });
+      if (!r.ok) throw new Error();
+      toast('✅ Producto creado exitosamente');
+      document.getElementById('c-nombre').value  = '';
+      document.getElementById('c-precio').value  = '';
+      document.getElementById('c-stock').value   = '';
+      document.getElementById('c-imagen').value  = '';
+      cargarProductos();
+    } catch { toast('Error al crear producto', 'error'); }
+  }
+
+  // ── UPDATE ─────────────────────────────────────────────────────────────────
+  function editarProducto(p) {
+    document.getElementById('form-crear').style.display = 'none';
+    document.getElementById('form-editar').style.display = 'block';
+    document.getElementById('e-id').value            = p.id;
+    document.getElementById('e-nombre').value        = p.nombre;
+    document.getElementById('e-precio').value        = p.precio;
+    document.getElementById('e-stock').value         = p.stock;
+    document.getElementById('e-imagen-actual').value = p.imagen || '';
+    document.getElementById('e-imagen').value        = '';
+    document.getElementById('form-editar').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  async function actualizarProducto() {
+    const id     = document.getElementById('e-id').value;
+    const nombre = document.getElementById('e-nombre').value.trim();
+    const precio = document.getElementById('e-precio').value;
+    const stock  = document.getElementById('e-stock').value;
+    if (!nombre || !precio || stock === '') return toast('Completa todos los campos', 'error');
+
+    const fd = new FormData();
+    fd.append('nombre', nombre);
+    fd.append('precio', precio);
+    fd.append('stock',  stock);
+    fd.append('imagenActual', document.getElementById('e-imagen-actual').value);
+    const img = document.getElementById('e-imagen').files[0];
+    if (img) fd.append('imagen', img);
+
+    try {
+      const r = await fetch(`${API}/${id}`, { method: 'PUT', body: fd });
+      if (!r.ok) throw new Error();
+      toast('✅ Producto actualizado');
+      cancelarEdicion();
+      cargarProductos();
+    } catch { toast('Error al actualizar', 'error'); }
+  }
+
+  function cancelarEdicion() {
+    document.getElementById('form-editar').style.display = 'none';
+    document.getElementById('form-crear').style.display  = 'block';
+  }
+
+  // ── DELETE ─────────────────────────────────────────────────────────────────
+  async function eliminarProducto(id, nombre) {
+    if (!confirm(`¿Eliminar "${nombre}"?`)) return;
+    try {
+      const r = await fetch(`${API}/${id}`, { method: 'DELETE' });
+      if (!r.ok) throw new Error();
+      toast(`🗑 "${nombre}" eliminado`);
+      cargarProductos();
+    } catch { toast('Error al eliminar', 'error'); }
+  }
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+  cargarProductos();
+</script>
+</body>
+</html>
